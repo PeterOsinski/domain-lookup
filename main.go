@@ -14,7 +14,7 @@ func worker(workerId int) {
 		addr := getPermutation()
 		for _, domain := range domains {
 			domain = addr + "." + domain
-			if ip, ok := net.ResolveIPAddr("ip4", domain); ok == nil {
+			if _, ok := net.ResolveIPAddr("ip4", domain); ok == nil {
 				fmt.Printf("%s\n", domain)
 			}
 		}
