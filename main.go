@@ -4,79 +4,52 @@ import "fmt"
 import "sync"
 import "time"
 import "net"
-import "container/heap"
+import "flag"
+import "runtime"
 
-// An IntHeap is a min-heap of ints.
-type IntHeap []string
+var domains = []string{"pl","com","eu","com.pl"}
 
-func (h IntHeap) Len() int           { return len(h) }
-func (h IntHeap) Less(i, j int) bool { return h[i] < h[j] }
-func (h IntHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *IntHeap) Push(x interface{}) {
-	// Push and Pop use pointer receivers because they modify the slice's length,
-	// not just its contents.
-	*h = append(*h, x.(string))
-}
-
-func (h *IntHeap) Pop() interface{} {
-
-	old := *h
-	n := len(old)
-
-	if n == 0 {
-		return nil
+func worker(workerId int) {
+	for {
+		addr := getPermutation()
+		for _, domain := range domains {
+			domain = addr + "." + domain
+			if ip, ok := net.ResolveIPAddr("ip4", domain); ok == nil {
+				fmt.Printf("%d,%s,%s\n", workerId, ip, domain)
+			}
+		}
 	}
-
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
+	time.Sleep(time.Nanosecond)
 }
 
-var h = &IntHeap{}
+type CF struct {
+	workerNum 		int
+	addressLength 	int
+}
+
+var cf = new(CF)
+
+func cli() {
+	flag.IntVar(&cf.workerNum, "worker_num", 1000, "Number of workers")
+	flag.IntVar(&cf.addressLength, "address_len", 4, "Max number of characters in generated domains")
+	
+	flag.Parse()	
+}
 
 func main() {
-
+	
+	runtime.GOMAXPROCS(3)
+	
+	cli()
+	
 	wg := new(sync.WaitGroup)
-	var mutex = &sync.Mutex{}
+	initPermutations(cf.addressLength, "qwertyuiopasdfghjklzxcvbnm")
 
 	// Adding routines to workgroup and running then
-	for i := 0; i < 10; i++ {
+	for i := 0; i < cf.workerNum; i++ {
 		wg.Add(1)
-		go worker(mutex)
+		go worker(i)
 	}
-
-	heap.Init(h)
-
-	go getPermutations(4, "qwertyuiopasdfghjklzxcvbnm", mutex)
-
 	wg.Wait()
 
-}
-
-var i int
-
-func worker(mutex *sync.Mutex) {
-	for {
-
-		if h.Len() > 0 {
-
-			mutex.Lock()
-			addr := heap.Pop(h).(string) + ".pl"
-			mutex.Unlock()
-
-			if ip, ok := net.LookupHost(addr); ok == nil {
-				i++
-				fmt.Printf("%s,%s\n", ip[0], addr)
-
-				if i == 100 {
-					fmt.Printf("### %s: Left on heap: %d\n", time.Now().Local(), h.Len())
-					i = 0
-				}
-			}
-
-		}
-
-		time.Sleep(time.Nanosecond)
-	}
 }
