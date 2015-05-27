@@ -15,7 +15,7 @@ func worker(workerId int) {
 		for _, domain := range domains {
 			domain = addr + "." + domain
 			if ip, ok := net.ResolveIPAddr("ip4", domain); ok == nil {
-				fmt.Printf("%d,%s,%s\n", workerId, ip, domain)
+				fmt.Printf("%s\n", domain)
 			}
 		}
 	}
